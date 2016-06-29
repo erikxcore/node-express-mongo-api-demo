@@ -50,20 +50,27 @@ router.post('/register', function(req, res) {
 		 	});        
     });
 
+router.get('logout', function(req, res) {
+	res.clearCookie("User");
+});
+
 
 router.post('/authenticate', function(req, res) {
+
   var cookie = req.cookies.cookieName;
 
 	  User.findOne({
 	    name: req.body.name
 	  }, function(err, user) {
 
-	    if (err) throw err;
+	    if (err){
+	    	console.log(err);
+	    	throw err;
+	    } 
 
 	    if (!user) {
 	      res.json({ success: false, message: 'Authentication failed. User not found.' });
 	    } else if (user) {
-
 			password(req.body.password).verifyAgainst(user.password, function(error, verified) {
 			if(!verified) {
 	  	      res.json({ success: false, message: 'Authentication failed. Wrong password.' });
@@ -87,6 +94,7 @@ router.post('/authenticate', function(req, res) {
 			          message: 'Enjoy your token!',
 			          token: token
 			        });
+
 			}
 		});
 
@@ -151,8 +159,6 @@ router.post('/posts', function(req, res) {
 router.put('/posts' , function(req, res) {
 
 	var cookie = req.cookies.User;
-	console.log(req);
-	console.log(cookie);
 	if(cookie){
 		var action = Post.findById(req.body.post_id).exec();
 
@@ -179,8 +185,7 @@ router.put('/posts' , function(req, res) {
 router.delete('/posts' , function(req, res) {
 
 	var cookie = req.cookies.User;
-	console.log(req);
-	console.log(cookie);
+
 	if(cookie){
 		var action = Post.findById(req.body.post_id).exec();
 
