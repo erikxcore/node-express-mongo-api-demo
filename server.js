@@ -1,11 +1,12 @@
 //Framework and modules
 var express     = require('express');
 var app         = express();
-var cookieParser = require('cookie-parser');
 var Promise = require("bluebird");
 var bodyParser  = require('body-parser');
 var morgan      = require('morgan');
 var mongoose    = require('mongoose');
+var session = require('express-session');
+var RedisStore = require('connect-redis')(session);
 Promise.promisifyAll(mongoose);
 //Application specific
 var config = require('./config'); 
@@ -34,13 +35,34 @@ app.use(bodyParser.json());
 // use morgan to log requests to the console
 app.use(morgan('dev'));
 
-//use cookie parser
-app.use(cookieParser());
 
 //allows mongose and all it's models to be available as functions that return a promise
 mongoose.Promise = require('bluebird');
 Promise.promisifyAll(mongoose);
 
+/*Session management - ioredis can be used for clustering e.g.
+var cluster = new Redis.Cluster([{
+  port: 6380,
+  host: '127.0.0.1'
+}, {
+  port: 6381,
+  host: '127.0.0.1'
+}]);
+cluster.set('foo', 'bar');
+*/
+app.use(session({
+    store: new RedisStore({url: config.redisUrl}),
+    resave: false,
+    saveUninitialized: false,
+    secret: config.session_secret
+})); 
+
+app.use(function (req, res, next) {
+  if (!req.session) {
+    return next(new Error('Could not retrieve session!'));
+  }
+  next();
+})
 
 var routes = require('./app/routes/routes');
 app.use('/api', routes); //if we wanted to serve the api seperately we could use app.use('/api',apiroutes);

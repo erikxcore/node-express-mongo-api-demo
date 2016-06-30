@@ -1,14 +1,13 @@
 module.exports = (function() {
     'use strict';
     var router = require('express').Router();
-    var cookieParser = require('cookie-parser');
     var password 	= require('password-hash-and-salt');
 	var jwt   		= require('jsonwebtoken');
 	var Promise = require("bluebird");
 	var config = require('../../config'); //don't like having to include this config file again in a child module
 	var User   = require('../../app/models/user'); //confusing implementation
 	var Post  = require('../../app/models/post');  //these two are used as models for our objects stored in the database
-
+	var tokenHelper = require('../../app/helpers/tokenHelper');
 
 //Public routes
 
@@ -43,6 +42,10 @@ router.post('/register', function(req, res) {
 		            if (err){
 		                res.send(err);
 		            }else{
+		            	var token = jwt.sign({name: user.name}, config.secret, {expiresIn : config.TOKEN_EXPIRATION });
+		            	req.session.logged_in = 'true';
+			    	  	req.session.username = user.name;
+			    	  	req.session.token = token;
 		            	res.json({ message: 'User created!' });
 		            }
 		        });
@@ -50,14 +53,19 @@ router.post('/register', function(req, res) {
 		 	});        
     });
 
-router.get('logout', function(req, res) {
-	res.clearCookie("User");
+router.get('/logout', function(req, res) {
+	req.session.destroy(function (err){
+		if(err) throw err
+		console.log("Session destroyed");
+		res.json({ message: 'Session deleted!' });
+	});
+	/*
+	req.session.regenerate(function onComplete(err) {});
+	*/
 });
 
 
 router.post('/authenticate', function(req, res) {
-
-  var cookie = req.cookies.cookieName;
 
 	  User.findOne({
 	    name: req.body.name
@@ -75,19 +83,16 @@ router.post('/authenticate', function(req, res) {
 			if(!verified) {
 	  	      res.json({ success: false, message: 'Authentication failed. Wrong password.' });
 			} else {
-				    if(user.admin == true){
-				        var token = jwt.sign({name: user.name}, config.admin_secret, { //don't sign token with full user object as it would contain password (though in this instance it would be heavily encrypted)
-				         	expiresIn : 60*60*24
-				        });
-				    }else{
-				        var token = jwt.sign({name: user.name}, config.secret, {
-				         	expiresIn : 60*60*24
-				        });
-			    	}
+						if(user.admin = 'true'){
+				        	req.session.admin = 'true';
+						}else{
+							req.session.admin = 'false';
+						}
+				        var token = jwt.sign({name: user.name}, config.secret, { expiresIn : config.TOKEN_EXPIRATION });
 
-			    	  if (cookie === undefined){
-			    	  	    res.cookie('User',user.name, { maxAge: 60*60*24, httpOnly: true });
-			    	  }
+			    	  req.session.logged_in = 'true';
+			    	  req.session.username = user.name;
+			    	  req.session.token = token;
 
 			        res.json({
 			          success: true,
@@ -106,31 +111,31 @@ router.post('/authenticate', function(req, res) {
 //Routes that require authentication
 
 router.use(function(req, res, next) {
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  var token = req.body.token || req.query.token || req.headers['x-access-token'] || req.session.token;
 
   if (token) {
     jwt.verify(token, config.secret, function(err, decoded) {      
       if (err) {
-      		console.log("Failed on regular check, now checking if admin");
-		    jwt.verify(token, config.admin_secret, function(err, decoded) {      
-		      if (err) {
-		        return res.json({ success: false, message: 'Failed to authenticate token.' });    
-		      } else {
-		        req.decoded = decoded;    
-		        next();
-		      }
-		    });
-      } else {
-        req.decoded = decoded;    
-        next();
-      }
-    });
+      		res.send(err);
+	   }else{
 
+		      	var newToken = tokenHelper.refreshToken(decoded,req.session.username);
+			    if(newToken) {
+			        req.decoded = newToken;    
+			        req.session.token = newToken;
+			        next();
+	            } else {
+			        req.decoded = decoded;    
+			        next();
+	            }
+	    }
+
+    });
   } else {
 
     return res.status(403).send({ 
         success: false, 
-        message: 'No token provided.' 
+        message: 'No token or bad provided.' 
     });
     
   }
@@ -144,7 +149,7 @@ router.use(function(req, res, next) {
 router.post('/posts', function(req, res) {
         
         var post = new Post(); 
-        post.author = req.body.author;
+        post.author = req.session.username
         post.content = req.body.content;
 
         post.save(function(err) {
@@ -158,7 +163,8 @@ router.post('/posts', function(req, res) {
 
 router.put('/posts' , function(req, res) {
 
-	var cookie = req.cookies.User;
+	var cookie = req.session.username;
+
 	if(cookie){
 		var action = Post.findById(req.body.post_id).exec();
 
@@ -177,14 +183,18 @@ router.put('/posts' , function(req, res) {
 		  }
 		 });
 	}else{
-			throw "Invalid cookie";
-		}
+
+	    return res.status(403).send({ 
+	        success: false, 
+	        message: 'Bad cookie provided.' 
+	    });		
+	}
     });
 
 
 router.delete('/posts' , function(req, res) {
 
-	var cookie = req.cookies.User;
+	var cookie = req.session.username;
 
 	if(cookie){
 		var action = Post.findById(req.body.post_id).exec();
@@ -204,34 +214,28 @@ router.delete('/posts' , function(req, res) {
 		  }
 		 });
 	}else{
-			throw "Invalid cookie";
+			
+		return res.status(403).send({ 
+	        success: false, 
+	        message: 'Bad cookie provided.' 
+	    });		
+
 		}
 
  });
 
 
 //Admin only routes
-
 	router.use(function(req, res, next) {
-	  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+	  var admin = req.session.admin;
 
-	  if (token) {
-	    jwt.verify(token, config.admin_secret, function(err, decoded) {      
-	      if (err) {
-	        return res.json({ success: false, message: 'Failed to authenticate admin token.' });    
-	      } else {
-	        req.decoded = decoded;    
+	  if (admin == 'true') {
 	        next();
-	      }
-	    });
-
-	  } else {
-
+	  }else {
 	    return res.status(403).send({ 
 	        success: false, 
-	        message: 'No token provided.' 
+	        message: 'Access not provided.' 
 	    });
-	    
 	  }
 	});
 
