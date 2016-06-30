@@ -55,7 +55,7 @@ router.post('/register', function(req, res) {
 
 router.get('/logout', function(req, res) {
 	req.session.destroy(function (err){
-		if(err) throw err
+		if(err) res.send(err);
 		console.log("Session destroyed");
 		res.json({ message: 'Session deleted!' });
 	});
@@ -73,7 +73,7 @@ router.post('/authenticate', function(req, res) {
 
 	    if (err){
 	    	console.log(err);
-	    	throw err;
+	    	res.send(err);
 	    } 
 
 	    if (!user) {
@@ -179,7 +179,7 @@ router.put('/posts' , function(req, res) {
 		  			res.json({ message: 'Post updated!' });
 		  		});
 		  }else{
-		  	throw "Not author attempting to modify post.";
+		  	res.send("Error deleting posts");
 		  }
 		 });
 	}else{
@@ -210,7 +210,7 @@ router.delete('/posts' , function(req, res) {
 		  			res.json({ message: 'Post deleted!' });
 		  		});
 		  }else{
-		  	throw "Not author attempting to modify post.";
+		  	res.send("Error deleting post.");
 		  }
 		 });
 	}else{
