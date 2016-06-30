@@ -1,7 +1,7 @@
 
 This is an example of a RESTful web service which could be implemented in a MEAN stack or a LAMP stack.
 
-Currently features standard POST/PUT/GET/DELETE routes, JSON token authentication with token refreshing, some use of cookies, a simple extension of promises for Mongoose, usage of a session store, and a simple demonstration of salt/hashed passwords for users.
+Currently features standard POST/PUT/GET/DELETE routes, JSON token authentication with token refreshing, some use of cookies within the session variable, a simple extension of promises for Mongoose, usage of a session store, and a simple demonstration of salt/hashed passwords for users.
 
 To re-create the development environment just run 'npm install' to pull in all node modules into /node_modules. spec.js is simply where our tests are defined for the Mocha integration/'unit' tests.
 
