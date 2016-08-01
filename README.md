@@ -6,7 +6,7 @@ Currently features standard POST/PUT/GET/DELETE routes, JSON token authenticatio
 To re-create the development environment just run 'npm install' to pull in all node modules into /node_modules. spec.js is simply where our tests are defined for the Mocha integration/'unit' tests.
 
 TO DO: 
-Possible enhancements further down the line if the front-end requies it. 
+Possible enhancements further down the line if the front-end requires it. 
 Create front-end project and implementation. 
 
 Technologies used:
