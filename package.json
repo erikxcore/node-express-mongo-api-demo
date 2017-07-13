@@ -1,6 +1,9 @@
 {
   "name": "node-service-with-token",
   "main": "server.js",
+  "engines": {
+    "node": "4.8.4"
+  },
   "dependencies": {
     "bluebird": "^3.4.1",
     "body-parser": "^1.15.2",
