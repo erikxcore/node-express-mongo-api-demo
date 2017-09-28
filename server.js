@@ -53,15 +53,15 @@ cluster.set('foo', 'bar');
 app.use(session({
     store: new RedisStore({url: config.redisUrl}),
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     secret: config.session_secret
 })); 
 
 app.use(function (req, res, next) {
-  console.log(req);
-  if (!req.session) {
-    return next(new Error('Could not retrieve session!'));
-  }
+//  if (!req.session) {
+//    return next(new Error('Could not retrieve session!'));
+//  }
+//above doesnt really make sense since on typical GETs..there would be no session. should only matter if theyre in the authenticated routes.
   next();
 })
 
