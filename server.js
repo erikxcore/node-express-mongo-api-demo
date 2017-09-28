@@ -53,11 +53,12 @@ cluster.set('foo', 'bar');
 app.use(session({
     store: new RedisStore({url: config.redisUrl}),
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     secret: config.session_secret
 })); 
 
 app.use(function (req, res, next) {
+  console.log(req);
   if (!req.session) {
     return next(new Error('Could not retrieve session!'));
   }
